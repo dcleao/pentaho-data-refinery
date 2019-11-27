@@ -46,6 +46,7 @@ import org.pentaho.di.core.refinery.publish.model.DataSourceAclModel;
 import org.pentaho.di.core.refinery.publish.util.JAXBUtils;
 
 import java.io.InputStream;
+import java.net.CookieHandler;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.List;
@@ -326,7 +327,7 @@ public class ModelServerPublishTest {
     WebResource.Builder builder = Mockito.mock( WebResource.Builder.class );
 
     doCallRealMethod().when( modelServerPublishSpy ).getClient();
-    doReturn( null ).when( modelServerPublishSpy ).getCsrfToken( any( Client.class ), anyString(), anyString() );
+    doReturn( null ).when( modelServerPublishSpy ).getCsrfToken( anyString(), any( CookieHandler.class ), anyString() );
 
     // check null response
     doReturn( null ).when( modelServerPublishSpy ).httpPost( any( WebResource.Builder.class ) );

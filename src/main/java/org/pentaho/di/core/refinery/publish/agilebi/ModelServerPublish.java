@@ -31,6 +31,9 @@ import com.sun.jersey.multipart.FormDataMultiPart;
 
 import org.apache.commons.lang.StringUtils;
 import org.jfree.util.Log;
+import org.pentaho.csrf.client.ICsrfClient;
+import org.pentaho.csrf.client.ICsrfToken;
+import org.pentaho.csrf.pentaho.IPentahoCsrfService;
 import org.pentaho.database.model.DatabaseAccessType;
 import org.pentaho.database.model.DatabaseConnection;
 import org.pentaho.di.core.database.DatabaseInterface;
@@ -39,15 +42,21 @@ import org.pentaho.di.core.logging.LogChannelInterface;
 import org.pentaho.di.core.refinery.publish.model.DataSourceAclModel;
 import org.pentaho.di.core.refinery.publish.util.JAXBUtils;
 import org.pentaho.di.job.entries.publish.exception.DuplicateDataSourceException;
-import org.pentaho.platform.web.http.security.CsrfToken;
-import org.pentaho.platform.web.http.security.CsrfUtil;
+import org.pentaho.platform.engine.core.system.PentahoSystem;
 
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.MediaType;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This is copied from AgileBI's org.pentaho.agilebi.spoon.publish.ModelServerPublish
@@ -64,6 +73,7 @@ public class ModelServerPublish extends ModelServerAction {
   private static final String PLUGIN_DATA_ACCESS_API_CONNECTION_UPDATE = "plugin/data-access/api/connection/update";
   private static final String PLUGIN_DATA_ACCESS_API_CONNECTION_DELETE = "plugin/data-access/api/connection/deletebyname";
   private static final String DATA_ACCESS_API_CONNECTION_GET = "plugin/data-access/api/connection/getresponse";
+  private static final String COOKIE_HEADER = "Cookie";
   private boolean forceOverwrite;
   private DataSourceAclModel aclModel;
   private LogChannelInterface logChannel;
@@ -123,11 +133,11 @@ public class ModelServerPublish extends ModelServerAction {
         .type( MediaType.APPLICATION_JSON )
         .entity( connection );
 
-      final CsrfToken csrfToken = getCsrfToken( client, contextUrl, storeDomainUrl );
+      final CookieHandler cookieHandler = new CookieManager();
+      final ICsrfToken csrfToken = getCsrfToken( contextUrl, cookieHandler, storeDomainUrl );
       if ( csrfToken != null ) {
         builder.header( csrfToken.getHeader(), csrfToken.getToken() );
-
-        csrfToken.getCookies().forEach( cookie -> builder.cookie( Cookie.valueOf( cookie ) ) );
+        writeCookiesToBuilder( builder, new URI( contextUrl ),  cookieHandler );
       }
 
       ClientResponse resp = httpPost( builder );
@@ -231,10 +241,12 @@ public class ModelServerPublish extends ModelServerAction {
         FormDataContentDisposition.name( "uploadAnalysis" ).fileName( catalogName ).build() );
     try {
       Builder builder = resourceBuilder( resource, part );
-      final CsrfToken csrfToken = getCsrfToken( client, contextUrl, storeDomainUrl );
+
+      final CookieHandler cookieHandler = new CookieManager();
+      final ICsrfToken csrfToken = getCsrfToken( contextUrl, cookieHandler, storeDomainUrl );
       if ( csrfToken != null ) {
         builder.header( csrfToken.getHeader(), csrfToken.getToken() );
-        csrfToken.getCookies().forEach( cookie -> builder.cookie( Cookie.valueOf( cookie ) ) );
+        writeCookiesToBuilder( builder, new URI( contextUrl ),  cookieHandler );
       }
       ClientResponse resp = httpPost( builder );
       String entity = null;
@@ -399,7 +411,39 @@ public class ModelServerPublish extends ModelServerAction {
   }
 
   @VisibleForTesting
-  CsrfToken getCsrfToken( Client client, String contextUrl, String storeDomainUrl ) {
-    return CsrfUtil.getCsrfToken( client, contextUrl.replaceAll( "^(.+)/$", "$1" ), storeDomainUrl );
+  ICsrfToken getCsrfToken(String contextUri, CookieHandler cookieHandler, String protectedService ) {
+    try {
+      final URI csrfServiceUri =
+          new URI( contextUri.replaceAll( "^(.+)/$", "$1" ) + IPentahoCsrfService.SERVICE_URL );
+      final URI protectedServiceUri = new URI( protectedService );
+
+      return getCsrfClient().getToken( csrfServiceUri, cookieHandler, protectedServiceUri );
+    } catch ( URISyntaxException ex) {
+      return null;
+    }
+  }
+
+  private ICsrfClient getCsrfClient() {
+    return PentahoSystem.get( ICsrfClient.class );
+  }
+
+  private void writeCookiesToBuilder( Builder builder, URI tokenServiceUri, CookieHandler cookieHandler ) {
+
+    Map<String, List<String>> requestHeadersMap;
+    Map<String, List<String>> currentRequestHeadersMap = new java.util.HashMap<>();
+    try {
+      requestHeadersMap = cookieHandler.get( tokenServiceUri, currentRequestHeadersMap );
+    } catch ( IOException e ) {
+      e.printStackTrace();
+      return;
+    }
+
+    // Each cookie text is something like: "name=value"
+    List<String> cookiesText = requestHeadersMap.get( COOKIE_HEADER );
+    if ( cookiesText != null ) {
+      for ( String cookieText : cookiesText ) {
+        builder.cookie( Cookie.valueOf( cookieText ) );
+      }
+    }
   }
 }

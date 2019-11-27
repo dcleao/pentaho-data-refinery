@@ -36,6 +36,7 @@
     <commons-xul.version>9.0.0.0-SNAPSHOT</commons-xul.version>
     <pdi.version>9.0.0.0-SNAPSHOT</pdi.version>
     <platform.version>9.0.0.0-SNAPSHOT</platform.version>
+    <pentaho-csrf.version>9.0.0.0-SNAPSHOT</pentaho-csrf.version>
 
     <dependency.jersey.revision>1.19.1</dependency.jersey.revision>
     <dependency.jersey-apache-client.revision>1.19.1</dependency.jersey-apache-client.revision>
@@ -135,6 +136,41 @@
         <exclusion>
           <groupId>com.sun.jersey</groupId>
           <artifactId>jersey-bundle</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- CSRF -->
+    <dependency>
+      <groupId>org.pentaho.csrf</groupId>
+      <artifactId>csrf-client-api</artifactId>
+      <version>${pentaho-csrf.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>*</artifactId>
+          <groupId>*</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.pentaho.csrf</groupId>
+      <artifactId>csrf-pentaho-server-api</artifactId>
+      <version>${pentaho-csrf.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>*</artifactId>
+          <groupId>*</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.pentaho.csrf</groupId>
+      <artifactId>csrf-client-impl</artifactId>
+      <version>${pentaho-csrf.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>*</artifactId>
+          <groupId>*</groupId>
         </exclusion>
       </exclusions>
     </dependency>

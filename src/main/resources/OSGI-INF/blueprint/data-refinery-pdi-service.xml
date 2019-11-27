@@ -115,4 +115,7 @@
     <property name="geoContextConfigProvider" ref="geoContextProvider"/>
   </bean>
 
+  <bean id="csrfClient" scope="singleton" class="org.pentaho.csrf.client.impl.CsrfClient" />
+
+  <service id="csrfClientService" interface="org.pentaho.csrf.client.ICsrfClient" ref="csrfClient" />
 </blueprint>
